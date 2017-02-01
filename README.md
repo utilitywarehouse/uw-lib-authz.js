@@ -39,7 +39,7 @@ It is also possible to perform authorize manually, where necessary:
 ```node
 const authorization = require('uw-lib-authz.js');
 
-if (!authorization('partner', 'read').verify('K97777')) {
+if (!authorization('partner', 'read').verify(req.auth, 'K97777')) {
   // Handle authorisation failure.
 }
 ```
