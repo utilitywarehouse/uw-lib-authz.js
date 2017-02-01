@@ -34,7 +34,7 @@ app.listen(3000, function () {
 
 ```
 
-It is also possible to perform authorize manually, where necessary:
+It is also possible to perform authorization manually, where necessary:
 
 ```node
 const authorization = require('uw-lib-authz.js');
