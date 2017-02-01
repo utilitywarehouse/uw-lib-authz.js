@@ -1,6 +1,6 @@
 {
-  "name": "uw-lib-authz.js",
-  "version": "0.0.0",
+  "name": "@utilitywarehouse/uw-lib-authz.js",
+  "version": "0.0.2",
   "description": "",
   "main": "index.js",
   "devDependencies": {
