@@ -1,6 +1,6 @@
 {
   "name": "@utilitywarehouse/uw-lib-authz.js",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Authorization counterpart to the Utility Warehouse authentication module",
   "main": "index.js",
   "scripts": {
