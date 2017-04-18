@@ -1,29 +1,6 @@
-const authorization = (entity, action) => {
-	const verify = (auth, entityId) => {
-		if (!auth || !Array.isArray(auth.scopes)) {
-			return false;
-		}
+const _ = require('lodash');
 
-		if (typeof entityId !== 'string' || entityId.length === 0) {
-			return false;
-		}
-
-		const personal = `${entity}.${entityId}.${action}`;
-		const wildcard = `${entity}.*.${action}`;
-
-		return auth.scopes.includes(personal) || auth.scopes.includes(wildcard);
-	};
-
-	const middleware = param => (req, res, next) => {
-		if (!verify(req.auth, req.params[param])) {
-			throw new AuthorizationError();
-		}
-
-		next();
-	};
-
-	return { verify, middleware }
-};
+_.templateSettings.interpolate = /{:(.*)}/g;
 
 class AuthorizationError extends Error {
 	constructor() {
@@ -33,4 +10,36 @@ class AuthorizationError extends Error {
 	}
 }
 
-module.exports = authorization;
+const containsScopes = (wantedScopes, givenScopes) => {
+	return _.difference(wantedScopes, givenScopes).length === 0;
+}
+
+const extractScopeFromParams = (scope, params) => {
+	return _.template(scope)(params);
+}
+
+const verify = (req, scopesCollection) => {
+	if (!_.isArray(_.get(req, 'auth.scopes'))) {
+		return false;
+	}
+
+	return _.some(scopesCollection, scopes => {
+		const extractedScopes = _.map(scopes,
+			s => extractScopeFromParams(s, req.params)
+		);
+		return containsScopes(extractedScopes, req.auth.scopes);
+	})
+};
+
+const middleware = scopesCollection => (req, res, next) => {
+	if (!verify(req, scopesCollection)) {
+		throw new AuthorizationError();
+	}
+
+	next();
+};
+
+module.exports = {
+	verify,
+	middleware
+};
