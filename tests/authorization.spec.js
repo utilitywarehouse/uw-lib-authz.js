@@ -1,101 +1,81 @@
-const authorization = require('../index');
+const { verify, middleware } = require('../index');
 
 describe('authorization', () => {
 	describe('verify', () => {
-		it('permits actions where a personal scope is supplied that matches the entity requested', () => {
+		it('should return true if requested scope in exists', () => {
+			const scopes = ['service.write'];
+
+			verify({auth : {scopes}}, [scopes]).should.equal(true);
+		});
+
+		it('should return true if requested scope combination exists (with templating)', () => {
 			const entity = 'partner';
-			const entityId = 'K97777';
-			const action = 'read';
-			const scopes = [`${entity}.${entityId}.${action}`];
+			const params = {partnerId : 'K97777'};
 
-			authorization(entity, action).verify({scopes}, entityId).should.equal(true);
+			verify({
+				params,
+				auth : { scopes : ['service.read', `${entity}.${params.partnerId}.read`]}
+			}, [['service.read', `${entity}.{:partnerId}.read`]]).should.equal(true);
 		});
 
-		it('permits actions where a wildcard scope is supplied that matches the entity requested', () => {
+		it('should return true if at least one requested scopes exists', () => {
 			const entity = 'partner';
-			const entityId = 'K97777';
-			const action = 'read';
-			const scopes = [`${entity}.*.${action}`];
+			const params = {partnerId : 'K97777'};
 
-			authorization(entity, action).verify({scopes}, entityId).should.equal(true);
+			verify({
+				params,
+				auth : { scopes : [`${entity}.${params.partnerId}.read`]}
+			}, [['service.read'], [`${entity}.{:partnerId}.read`]]).should.equal(true);
 		});
 
-		it('permits actions where one of many scopes matches the entity requested', () => {
+		it('should return false requested scope does not exist', () => {
+			const scopes = ['service.write'];
+
+			verify({auth : {scopes : []}}, [scopes]).should.equal(false);
+		});
+
+		it('should return false if scope combination does not exist', () => {
 			const entity = 'partner';
-			const entityId = 'K97777';
-			const scopes = [`${entity}.${entityId}.read`, `${entity}.${entityId}.write`];
+			const params = {partnerId : 'K97777'};
 
-			authorization(entity, 'write').verify({scopes}, entityId).should.equal(true);
+			verify({
+				params,
+				auth : { scopes : ['service.read']}
+			}, [['service.read', `${entity}.{:partnerId}.read`]]).should.equal(false);
 		});
 
-		it('rejects actions where no scopes are available', () => {
-			const scopes = [];
-
-			authorization('partner', 'read').verify({scopes}, 'K97777').should.equal(false);
-		});
-
-		it('rejects actions where the scopes provided are not well-formed', () => {
-			const scopes = 'abc';
-
-			authorization('partner', 'read').verify({scopes}, 'K97777').should.equal(false);
-		});
-
-		it('rejects actions where the entity provided is not well formed', () => {
-			const scopes = [`partner.K97777.read`];
-
-			authorization('partner', 'read').verify({scopes}, '').should.equal(false);
-		});
-
-		it('rejects actions where a personal scope does not match the entity ID provided', () => {
+		it('should return false if not even one scope exists', () => {
 			const entity = 'partner';
-			const action = 'read';
-			const scopes = [`${entity}.K98888.${action}`];
+			const params = {partnerId : 'K97777'};
 
-			authorization(entity, action).verify({scopes}, 'K97777').should.equal(false);
-		});
-
-		it('rejects actions where a wildcard scope does not match the entity type', () => {
-			const entityId = 'K97777';
-			const action = 'read';
-			const scopes = [`customer.${entityId}.${action}`];
-
-			authorization('partner', action).verify({scopes}, entityId).should.equal(false);
-		});
-
-		it('rejects actions where the action is not permitted for the given entity', () => {
-			const entity = 'partner';
-			const entityId = 'K97777';
-			const scopes = [`${entity}.${entityId}.read`];
-
-			authorization(entity, 'write').verify({scopes}, entityId).should.equal(false);
+			verify({
+				params,
+				auth : { scopes : []}
+			}, [['service.read'], [`${entity}.{:partnerId}.read`]]).should.equal(false);
 		});
 	});
 
 	describe('middleware', () => {
 		it('calls next if all checks pass', () => {
-			const param = 'entityId';
-			const entity = 'partner';
 			const entityId = 'K97777';
-			const action = 'read';
-			const scopes = [`${entity}.${entityId}.${action}`];
-			const params = {[param]: entityId};
+			const scopes = [`partner.${entityId}.read`];
+			const params = {entityId};
 			const auth = {scopes};
 			const req = {params, auth};
 			const next = sinon.spy();
 
-			authorization(entity, action).middleware(param)(req, {}, next);
+			middleware([scopes])(req, {}, next);
 
 			next.should.have.been.calledOnce;
 		});
 
 		it('raises an error if any checks fail', () => {
-			const param = 'entityId';
-			const scopes = [`partner.K97777.read`];
-			const params = {[param]: 'K98888'};
-			const auth = {scopes};
+			const scopes = [`partner.{:partnerId}.read`];
+			const params = {partnerId: 'K98888'};
+			const auth = {scopes : [`partner.XXX9999.read`]};
 			const req = {params, auth};
 
-			(() => authorization('partner', 'read').middleware(param)(req)).should.throw(/Unauthorized/);
+			(() => middleware([scopes])(req)).should.throw(/Unauthorized/);
 		});
 	})
 });
