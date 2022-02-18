@@ -1,0 +1,19 @@
+version: 2
+
+jobs:
+    build:
+        working_directory: ~/build
+        docker:
+            - image: circleci/node:12
+        steps:
+            - checkout
+            - setup_remote_docker
+            - run: yarn install
+            - run: yarn test
+
+workflows:
+    version: 2
+    development:
+        jobs:
+            - build:
+                context: partner
